@@ -21,7 +21,7 @@ In attack.py, torch.nn.CrossEntropyLoss is used as the cost function for better 
 Denoise techniques are not implemented, so the results have little noisy
 
 ## Results
-![figure](./MIA.png)
+![figure](./MIA.svg)
 
 ## License
 
