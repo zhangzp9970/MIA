@@ -19,7 +19,7 @@ The results from the original author can be found at https://github.com/mfredrik
 
 * pytorch 1.8.1
 * torchvision
-* easydl
+* [easydl](https://github.com/thuml/easydl)
 * tqdm
 * numpy
 * some standard python libs
