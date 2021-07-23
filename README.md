@@ -12,13 +12,30 @@ The results from the original author can be found at https://github.com/mfredrik
 * main.py -- train the target network
 * test.py -- test the target network
 * attack.py -- perform model inversion attack
+* turn_to_list.py --code to make the dataset index
+* attfdbtrain.txt and attfdbtest.txt the two index file
+
+## Third-party libraries
+
+* pytorch 1.8.1
+* torchvision
+* easydl
+* tqdm
+* numpy
+* some standard python libs
+
 
 ## Differents
+
+ The original at&t face database contains 400 images in different folders named s1-s40, there is also a readme file. I deleted the readme file and renamed s1-s40 to 0-39. Especially, s40 is renamed to 0. Thus, the dataset can be easily read by python and 0-39 are the 40 different labels. Besides, the author of the paper use 7 images in each class for training and the other 3 images for test. I divided the dataset into 2 parts by hand in order to avoid complicated python code filtering the images. The two folders are named attfdbtrain and attfdbtest, respectively. 
+
+Unlike the author, I use 64 images as a minibatch to train the network. From my perspective, it is not a good idea to train the network with only 1 images in each minibatch.
+
 In attack.py, instead of Gradient Descent, SGD is used to achieve a high performance on gradient descent. See https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD for more information.
 
 In attack.py, torch.nn.CrossEntropyLoss is used as the cost function for better results, which still have the same meaning as the original
 
-Denoise techniques are not implemented, so the results have little noisy
+Denoise techniques such as ZCA are not implemented, so the results have little noisy
 
 ## Results
 ![figure](./MIA.svg)
