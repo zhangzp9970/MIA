@@ -22,8 +22,8 @@ log_interval = 100
 test_interval = 100
 classes = 40
 root_dir = "./log"
-train_file = "D:\\attfdbtrain.txt"
-test_file = "D:\\attfdbtest.txt"
+train_file = "C:\\Users\\zhang\\attfdbtrain.txt"
+test_file = "C:\\Users\\zhang\\attfdbtest.txt"
 
 cudnn.benchmark = True
 cudnn.deterministic = True
@@ -69,12 +69,13 @@ test_dl = DataLoader(dataset=test_ds, batch_size=batch_size,
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.regression = nn.Linear(in_features=92*112, out_features=classes)
-        # self.softmax = nn.Softmax(dim=-1)
+        self.input_features = 112*92
+        self.output_features = classes
+        self.regression = nn.Linear(
+            in_features=self.input_features, out_features=self.output_features)
 
     def forward(self, x):
         x = self.regression(x)
-        # x = self.softmax(x)
         return x
 
 
@@ -116,7 +117,7 @@ while global_step < min_step:
         if global_step % test_interval == 0:
             counters = [AccuracyCounter() for x in range(classes)]
             with TrainingModeManager([mynet], train=False) as mgr, \
-                    Accumulator(['after_softmax','label']) as target_accumulator, \
+                    Accumulator(['after_softmax', 'label']) as target_accumulator, \
                     torch.no_grad():
                 for i, (im, label) in enumerate(tqdm(test_dl, desc='testing ')):
                     im = im.to(output_device)
@@ -156,3 +157,4 @@ while global_step < min_step:
 
                 with open(os.path.join(log_dir, 'current.pkl'), 'wb') as f:
                     torch.save(data, f)
+logger.close()

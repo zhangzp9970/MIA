@@ -21,7 +21,7 @@ classes = 40
 root_dir = "./log"
 train_file = "C:\\Users\\zhang\\attfdbtrain.txt"
 test_file = "C:\\Users\\zhang\\attfdbtest.txt"
-test_pkl = "C:\\Users\\zhang\\OneDrive - 东南大学\\research\\ai security\\source\\code2\\log\\Jul13_20-33-21\\best.pkl"
+test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\log\\Jul24_14-54-36\\best.pkl"
 
 cudnn.benchmark = True
 cudnn.deterministic = True
@@ -67,12 +67,13 @@ test_dl = DataLoader(dataset=test_ds, batch_size=batch_size,
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.regression = nn.Linear(in_features=92*112, out_features=classes)
-        # self.softmax = nn.Softmax(dim=-1)
+        self.input_features = 112*92
+        self.output_features = classes
+        self.regression = nn.Linear(
+            in_features=self.input_features, out_features=self.output_features)
 
     def forward(self, x):
         x = self.regression(x)
-        # x = self.softmax(x)
         return x
 
 
@@ -113,3 +114,5 @@ acc_tests = [x.reportAccuracy()
                 for x in counters if not np.isnan(x.reportAccuracy())]
 acc_test = torch.ones(1, 1) * np.mean(acc_tests)
 print(f'test accuracy is {acc_test.item()}')
+logger.add_text('test accuracy', f'test accuracy is {acc_test.item()}')
+logger.close()

@@ -20,9 +20,7 @@ data_workers = 0
 # batch_size = 64
 classes = 40
 root_dir = "./log"
-test_pkl = "D:\\best.pkl"
-# attack_image_path = "D:\\attfdbtest\\3\\9.pgm"
-target_label = 12
+test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\log\\Jul24_14-54-36\\best.pkl"
 
 alpha = 50000
 beta = 1000
@@ -53,19 +51,6 @@ log_dir = f'{root_dir}/{now}'
 logger = SummaryWriter(log_dir)
 
 
-attack_transform = Compose([
-    Grayscale(num_output_channels=1),
-    ToTensor()
-])
-
-
-# def LoadAttackImage(image_path):
-#     assert os.path.exists(image_path)
-#     im = Image.open(image_path).convert('RGB')
-#     im = attack_transform(im)
-#     return im
-
-
 def Process(im_flatten):
     maxValue = torch.max(im_flatten)
     minValue = torch.min(im_flatten)
@@ -74,21 +59,70 @@ def Process(im_flatten):
     return im_flatten
 
 
-def Cost(NNout, label):
-    ithNNout = NNout[label]
-    cost = 1.0-ithNNout
-    return cost
+def Attack(mynet, target_label):
+    aim_flatten = torch.zeros(1, 112*92)
+    v = torch.zeros(1, 112*92)
+    aim_flatten.requires_grad = True
+    costn_1 = 10
+    b = 0
+    g = 0
+    out = mynet.forward(aim_flatten.detach())
+    after_softmax = F.softmax(out, dim=-1)
+    predict = torch.argmax(after_softmax)
+    print(predict)
+    logger.add_image(f'original input image {target_label}',
+                     aim_flatten.detach().reshape(1, 112, 92), target_label)
+    logger.add_text(f'original input image predict label {target_label}',
+                    f'predict label: {predict.item()}')
+    for i in range(alpha):
+        out = mynet.forward(aim_flatten)
+        if aim_flatten.grad is not None:
+            aim_flatten.grad.zero_()
+        out = out.reshape(1, 40)
+        target_class = torch.tensor([target_label])
+        cost = nn.CrossEntropyLoss()(out, target_class)
+        cost.backward()
+        aim_grad = aim_flatten.grad
+        # see https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD
+        aim_flatten = aim_flatten-learning_rate*(momentum*v+aim_grad)
+        aim_flatten = Process(aim_flatten)
+        aim_flatten = torch.clamp(aim_flatten.detach(), 0, 1)
+        aim_flatten.requires_grad = True
+        if cost >= costn_1:
+            b = b+1
+            if b > beta:
+                break
+        else:
+            b = 0
+        costn_1 = cost
+        if cost < gama:
+            break
+    out = mynet.forward(aim_flatten.detach())
+    after_softmax = F.softmax(out, dim=-1)
+    predict = torch.argmax(after_softmax)
+    print(predict)
+    logger.add_image(f'inverted image {target_label}',
+                     aim_flatten.detach().reshape(1, 112, 92), target_label)
+    logger.add_text(f'inverted image predict label {target_label}',
+                    f'predict label: {predict.item()}')
+    oim_flatten = aim_flatten.detach()
+    output_image = oim_flatten.reshape(112, 92)
+    output_image = output_image*255
+    output_imageN = output_image.numpy()
+    im = Image.fromarray(np.uint8(output_imageN))
+    im.save(f'{log_dir}/{target_label}.pgm')
 
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.regression = nn.Linear(in_features=92*112, out_features=classes)
-        # self.softmax = nn.Softmax(dim=-1)
+        self.input_features = 112*92
+        self.output_features = classes
+        self.regression = nn.Linear(
+            in_features=self.input_features, out_features=self.output_features)
 
     def forward(self, x):
         x = self.regression(x)
-        # x = self.softmax(x)
         return x
 
 
@@ -98,82 +132,8 @@ mynet = nn.DataParallel(net, device_ids=gpu_ids,
 assert os.path.exists(test_pkl)
 data = torch.load(open(test_pkl, 'rb'))
 mynet.load_state_dict(data['mynet'])
-
-# attack_image = LoadAttackImage(attack_image_path)
-# aim_shape = attack_image.shape
-# attack_image = attack_image.to(output_device)
-# aim_flatten = attack_image.flatten()
-aim_flatten = torch.zeros(1, 112*92)
-v = torch.zeros(1, 112*92)
-
-aim_flatten.requires_grad = True
-
-costn_1 = 10
-b = 0
-g = 0
-
-out = mynet.forward(aim_flatten.detach())
-after_softmax = F.softmax(out, dim=-1)
-predict = torch.argmax(after_softmax)
-print(predict)
-
-
-for i in range(alpha):
-
-    out = mynet.forward(aim_flatten)
-    # after_softmax = F.softmax(out, dim=-1)
-
-    if aim_flatten.grad is not None:
-        aim_flatten.grad.zero_()
-
-    # cost = Cost(after_softmax, target_class)
-    out = out.reshape(1, 40)
-    target_class = torch.tensor([target_label])
-    cost = nn.CrossEntropyLoss()(out, target_class)
-
-    cost.backward()
-    print(cost)
-
-    aim_grad = aim_flatten.grad
-    # see https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD
-    aim_flatten = aim_flatten-learning_rate*(momentum*v+aim_grad)
-    aim_flatten = Process(aim_flatten)
-    aim_flatten = torch.clamp(aim_flatten.detach(), 0, 1)
-    aim_flatten.requires_grad = True
-
-    if cost >= costn_1:
-        b = b+1
-        if b > beta:
-            print("break here b")
-            break
-    else:
-        b = 0
-
-    costn_1 = cost
-    if cost < gama:
-        break
-    #     g = g+1
-    #     print(g)
-    #     if g > 1:
-    #         print("break here g")
-    #         break
-    # else:
-    #     g = 0
-
-    if (i+1) % 10 == 0:
-        # print(cost)
-        logger.add_scalar('cost', cost, i)
-
-out = mynet.forward(aim_flatten.detach())
-after_softmax = F.softmax(out, dim=-1)
-predict = torch.argmax(after_softmax)
-print(predict)
-
-oim_flatten = aim_flatten.detach()
-output_image = oim_flatten.reshape(112, 92)
-output_image = output_image*255
-output_imageN = output_image.numpy()
-im = Image.fromarray(np.uint8(output_imageN))
-im.save(log_dir+"/"+"hhhh.pgm")
-im.show()
-logger.add_scalar('cost', cost, i)
+for i in range(40):
+    clear_output()
+    print(f'---class{i}---')
+    Attack(mynet=mynet, target_label=i)
+logger.close()
