@@ -9,11 +9,15 @@ The official code from the author can be found at: https://www.cs.cmu.edu/~mfred
 The results from the original author can be found at https://github.com/mfredrik/facematch
 
 ## Usage
+
+The main branch contains the code for attacking logistic regression network, the MLP branch contains the code for attacking multi-layer perception network with a hidden layer of 3000 neurals, both are described in the paper.
+
 * main.py -- train the target network
 * test.py -- test the target network
 * attack.py -- perform model inversion attack
 * turn_to_list.py -- code to make the dataset index
 * attfdbtrain.txt and attfdbtest.txt -- the two dataset index file
+* log/ -- directory contains the full results, use `tensorboard --logdir .` to see them.
 
 <b>IMPORTANT: The code runs successfully on my machine. However, I might forgot to describe some details when writting this readme. So feel free to contact me via [email](mailto:zhangzp9970@outlook.com) or GitHub issues :)</b>
 
