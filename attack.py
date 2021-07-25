@@ -19,8 +19,8 @@ gpus = 0
 data_workers = 0
 # batch_size = 64
 classes = 40
-root_dir = "./log"
-test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\log\\Jul24_14-54-36\\best.pkl"
+root_dir = "./logMLP"
+test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\logMLP\\Jul24_16-28-35\\best.pkl"
 
 alpha = 50000
 beta = 1000
@@ -66,7 +66,7 @@ def Attack(mynet, target_label):
     costn_1 = 10
     b = 0
     g = 0
-    out = mynet.forward(aim_flatten.detach())
+    feauture, feauture3000, out = mynet.forward(aim_flatten.detach())
     after_softmax = F.softmax(out, dim=-1)
     predict = torch.argmax(after_softmax)
     print(predict)
@@ -75,7 +75,7 @@ def Attack(mynet, target_label):
     logger.add_text(f'original input image predict label {target_label}',
                     f'predict label: {predict.item()}')
     for i in range(alpha):
-        out = mynet.forward(aim_flatten)
+        feauture, feauture3000, out = mynet.forward(aim_flatten)
         if aim_flatten.grad is not None:
             aim_flatten.grad.zero_()
         out = out.reshape(1, 40)
@@ -97,7 +97,7 @@ def Attack(mynet, target_label):
         costn_1 = cost
         if cost < gama:
             break
-    out = mynet.forward(aim_flatten.detach())
+    feauture, feauture3000, out = mynet.forward(aim_flatten.detach())
     after_softmax = F.softmax(out, dim=-1)
     predict = torch.argmax(after_softmax)
     print(predict)
@@ -117,13 +117,20 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.input_features = 112*92
+        self.middle_features = 3000
         self.output_features = classes
+        self.fc = nn.Linear(in_features=self.input_features,
+                            out_features=self.middle_features)
         self.regression = nn.Linear(
-            in_features=self.input_features, out_features=self.output_features)
+            in_features=self.middle_features, out_features=self.output_features)
 
     def forward(self, x):
+        out = [x]
+        x = self.fc(x)
+        out.append(x)
         x = self.regression(x)
-        return x
+        out.append(x)
+        return out
 
 
 net = Net()

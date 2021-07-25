@@ -18,10 +18,10 @@ gpus = 0
 data_workers = 0
 batch_size = 64
 classes = 40
-root_dir = "./log"
+root_dir = "./logMLP"
 train_file = "C:\\Users\\zhang\\attfdbtrain.txt"
 test_file = "C:\\Users\\zhang\\attfdbtest.txt"
-test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\log\\Jul24_14-54-36\\best.pkl"
+test_pkl = "C:\\Users\\zhang\\Documents\\GitHub\\MIA\\logMLP\\Jul24_16-28-35\\best.pkl"
 
 cudnn.benchmark = True
 cudnn.deterministic = True
@@ -68,13 +68,20 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.input_features = 112*92
+        self.middle_features = 3000
         self.output_features = classes
+        self.fc = nn.Linear(in_features=self.input_features,
+                            out_features=self.middle_features)
         self.regression = nn.Linear(
-            in_features=self.input_features, out_features=self.output_features)
+            in_features=self.middle_features, out_features=self.output_features)
 
     def forward(self, x):
+        out = [x]
+        x = self.fc(x)
+        out.append(x)
         x = self.regression(x)
-        return x
+        out.append(x)
+        return out
 
 
 net = Net()
@@ -92,7 +99,7 @@ with TrainingModeManager([mynet], train=False) as mgr, \
         label = label.to(output_device)
         bs = im.shape[0]
         im_flatten = im.reshape([bs, -1])
-        out = mynet.forward(im_flatten)
+        feauture, feauture3000, out = mynet.forward(im_flatten)
         after_softmax = F.softmax(out, dim=-1)
 
         for name in target_accumulator.names:
