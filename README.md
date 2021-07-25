@@ -17,7 +17,7 @@ The main branch contains the code for attacking logistic regression network, the
 * attack.py -- perform model inversion attack
 * turn_to_list.py -- code to make the dataset index
 * attfdbtrain.txt and attfdbtest.txt -- the two dataset index file
-* log/ -- directory contains the full results, use `tensorboard --logdir .` to see them.
+* log/ and logMLP/ -- directory contains the full results, use `tensorboard --logdir .` to see them. The pkl file of the MLP net was not uploaded due to the 100 MB size limit of GitHub push operation.
 
 <b>IMPORTANT: The code runs successfully on my machine. However, I might forgot to describe some details when writting this readme. So feel free to contact me via [email](mailto:zhangzp9970@outlook.com) or GitHub issues :)</b>
 
