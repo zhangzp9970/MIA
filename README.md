@@ -1,41 +1,38 @@
 # MIA
+
 Unofficial Pytorch implementation of paper: Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures
 
 ## Description
-This this an <b>unofficial</b> pytorch implementation of paper: Matt Fredrikson, Somesh Jha, and Thomas Ristenpart. 2015. Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures. In <i>Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security</i> (<i>CCS '15</i>). Association for Computing Machinery, New York, NY, USA, 1322–1333. DOI:https://doi.org/10.1145/2810103.2813677
 
-The official code from the author can be found at: https://www.cs.cmu.edu/~mfredrik/
+This this an **unofficial** pytorch implementation of paper: Matt Fredrikson, Somesh Jha, and Thomas Ristenpart. 2015. Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures. In *Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security*  (*CCS '15*). Association for Computing Machinery, New York, NY, USA, 1322–1333. DOI:https://doi.org/10.1145/2810103.2813677
+
+The official code from the author can be found at: https://www.cs.cmu.edu/~mfredrik/. It seems that the page sometimes doesn't load well.
 
 The results from the original author can be found at https://github.com/mfredrik/facematch
 
 ## Usage
 
-The main branch contains the code for attacking logistic regression network, the MLP branch contains the code for attacking multi-layer perception network with a hidden layer of 3000 neurals, both are described in the paper.
+The repository contains both the code for attacking the logistic regression network and the multi-layer perception network with a hidden layer of 3000 neurals. Both networks are described in the paper. The code is written in PyTorch along with the [torchplus ](https://github.com/zhangzp9970/torchplus)toolkit library developed by me. It can be easily run both on CPU and GPU. GPU is prefered for better performance.
+
+Change `mynet = Net(h*w, class_num).to(output_device).train(True)` to `mynet = MLP(h*w, class_num).to(output_device).train(True)` to change the network.
+
+Download the dataset, install the dependences (below), Click run in any editor.
 
 * main.py -- train the target network
-* test.py -- test the target network
 * attack.py -- perform model inversion attack
-* turn_to_list.py -- code to make the dataset index
-* attfdbtrain.txt and attfdbtest.txt -- the two dataset index file
-* log/ -- directory contains the full results, use `tensorboard --logdir .` to see them.
-
-<b>IMPORTANT: The code runs successfully on my machine. However, I might forgot to describe some details when writting this readme. So feel free to contact me via [email](mailto:zhangzp9970@outlook.com) or GitHub issues :)</b>
 
 ## Third-party libraries
 
-* pytorch 1.8.1
-* torchvision
-* [easydl](https://github.com/thuml/easydl)
-* tqdm
-* numpy
-* some standard python libs
+Anaconda is prefered is the easiest way. Install Anaconda and install pytorch using the command in the official page. Then install torchplus using `conda install torchplus -c zhangzp9970`. Everything will be ok then.
 
+* pytorch >= 1.8.1
+* torchvision
+* [torchplus](https://github.com/zhangzp9970/torchplus)
+* tqdm
 
 ## Differents
 
- The original at&t face database contains 400 images in different folders named s1-s40, there is also a readme file. I deleted the readme file and renamed s1-s40 to 0-39. Especially, s40 is renamed to 0. Thus, the dataset can be easily read by python and 0-39 are the 40 different labels. Besides, the author of the paper use 7 images in each class for training and the other 3 images for test. I divided the dataset into 2 parts by hand in order to avoid complicated python code filtering the images. The two folders are named attfdbtrain and attfdbtest, respectively. 
-
-Unlike the author, I use 64 images as a minibatch to train the network. From my perspective, it is not a good idea to train the network with only 1 images in each minibatch.
+Unlike the author, I use 8 images as a minibatch to train the network. From my perspective, it is not a good idea to train the network with only 1 images in each minibatch. The batch size can be any number less than the dataset size.
 
 In attack.py, instead of Gradient Descent, SGD is used to achieve a high performance on gradient descent. See https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD for more information.
 
@@ -44,11 +41,12 @@ In attack.py, torch.nn.CrossEntropyLoss is used as the cost function for better 
 Denoise techniques such as ZCA are not implemented, so the results have little noisy
 
 ## Results
+
 ![figure](./MIA.svg)
 
 ## License
 
-Copyright © 2021 Zeping Zhang
+Copyright © 2021-2022 Zeping Zhang
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -61,4 +59,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+along with this program.  If not, see [http://www.gnu.org/licenses/](http://www.gnu.org/licenses/).
