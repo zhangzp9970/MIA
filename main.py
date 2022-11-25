@@ -62,6 +62,22 @@ if __name__ == '__main__':
             x = self.regression(x)
             return x
 
+    class MLP(nn.Module):
+        def __init__(self, input_features, output_features):
+            super(MLP, self).__init__()
+            self.input_features = input_features
+            self.middle_features = 3000
+            self.output_features = output_features
+            self.fc = nn.Linear(in_features=self.input_features,
+                                out_features=self.middle_features)
+            self.regression = nn.Linear(
+                in_features=self.middle_features, out_features=self.output_features)
+
+        def forward(self, x):
+            x = self.fc(x)
+            x = self.regression(x)
+            return x
+
     mynet = Net(h*w, class_num).to(output_device).train(True)
     optimizer = optim.SGD(mynet.parameters(), lr=0.01)
 
