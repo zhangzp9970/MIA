@@ -1,160 +1,137 @@
-import datetime
 import os
-import random
-
-import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from easydl import *
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
+from torchvision.datasets import *
 from torchvision.transforms.transforms import *
+from torchvision.transforms.functional import *
+from torchvision.utils import save_image
 from tqdm import tqdm
-
-gpus = 0
-data_workers = 0
-batch_size = 64
-min_step = 100*150
-log_interval = 100
-test_interval = 100
-classes = 40
-root_dir = "./log"
-train_file = "C:\\Users\\zhang\\attfdbtrain.txt"
-test_file = "C:\\Users\\zhang\\attfdbtest.txt"
-
-cudnn.benchmark = True
-cudnn.deterministic = True
-seed = 9970
-random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-np.random.seed(seed)
-os.environ['PYTHONHASHSEED'] = str(seed)
-
-if gpus < 1:
-    import os
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
-    gpu_ids = []
-    output_device = torch.device('cpu')
-else:
-    gpu_ids = select_GPUs(gpus)
-    output_device = gpu_ids[0]
-
-now = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
-log_dir = f'{root_dir}/{now}'
-logger = SummaryWriter(log_dir)
-
-train_transform = Compose([
-    Grayscale(num_output_channels=1),
-    ToTensor()
-])
-
-test_transform = Compose([
-    Grayscale(num_output_channels=1),
-    ToTensor()
-])
-
-train_ds = FileListDataset(list_path=train_file, transform=train_transform)
-test_ds = FileListDataset(list_path=test_file, transform=test_transform)
-
-train_dl = DataLoader(dataset=train_ds, batch_size=batch_size,
-                      shuffle=True, num_workers=data_workers, drop_last=True)
-test_dl = DataLoader(dataset=test_ds, batch_size=batch_size,
-                     shuffle=False, num_workers=data_workers, drop_last=False)
+from torchplus.utils import Init, ClassificationAccuracy
 
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.input_features = 112*92
-        self.output_features = classes
-        self.regression = nn.Linear(
-            in_features=self.input_features, out_features=self.output_features)
+if __name__ == '__main__':
+    batch_size = 8
+    train_epoches = 50
+    log_epoch = 2
+    class_num = 40
+    root_dir = "D:/log/paper1/logZZPMAIN"
+    dataset_dir = "E:/datasets/at&t face database"
+    h = 112
+    w = 92
 
-    def forward(self, x):
-        x = self.regression(x)
-        return x
+    init = Init(seed=9970, log_root_dir=root_dir, split=True,
+                backup_filename=__file__, tensorboard=True, comment=f'main AT and T face')
+    output_device = init.get_device()
+    writer = init.get_writer()
+    log_dir, model_dir = init.get_log_dir()
+    data_workers = 2
 
+    transform = Compose([
+        Grayscale(num_output_channels=1),
+        ToTensor()
+    ])
 
-net = Net()
-mynet = nn.DataParallel(net, device_ids=gpu_ids,
-                        output_device=output_device).train(True)
-optimizer = optim.SGD(mynet.parameters(), lr=0.01)
+    ds = ImageFolder(dataset_dir, transform=transform)
+    ds_len = len(ds)
+    train_ds, test_ds = random_split(
+        ds, [ds_len*7//10, ds_len-ds_len*7//10])
 
-global_step = 0
-best_acc = 0
-total_steps = tqdm(range(min_step), desc='global step')
-epoch_id = 0
+    train_ds_len = len(train_ds)
+    test_ds_len = len(test_ds)
 
-while global_step < min_step:
-    iters = tqdm(train_dl, desc=f'epoch {epoch_id} ', total=len(train_dl))
-    epoch_id += 1
-    for i, (im, label) in enumerate(iters):
-        im = im.to(output_device)
-        label = label.to(output_device)
-        bs = im.shape[0]
-        im_flatten = im.reshape([bs, -1])
-        out = mynet.forward(im_flatten)
-        ce = nn.CrossEntropyLoss()(out, label)
-        with OptimizerManager([optimizer]):
+    print(train_ds_len)
+    print(test_ds_len)
+
+    train_dl = DataLoader(dataset=train_ds, batch_size=batch_size,
+                          shuffle=True, num_workers=data_workers, drop_last=True)
+    test_dl = DataLoader(dataset=test_ds, batch_size=batch_size,
+                         shuffle=False, num_workers=data_workers, drop_last=False)
+
+    class Net(nn.Module):
+        def __init__(self, input_features, output_features):
+            super(Net, self).__init__()
+            self.input_features = input_features
+            self.output_features = output_features
+            self.regression = nn.Linear(
+                in_features=self.input_features, out_features=self.output_features)
+
+        def forward(self, x):
+            x = self.regression(x)
+            return x
+
+    mynet = Net(h*w, class_num).to(output_device).train(True)
+    optimizer = optim.SGD(mynet.parameters(), lr=0.01)
+
+    for epoch_id in tqdm(range(1, train_epoches+1), desc='Total Epoch'):
+        iters = tqdm(train_dl, desc=f'epoch {epoch_id}')
+        for i, (im, label) in enumerate(iters):
+            im = im.to(output_device)
+            label = label.to(output_device)
+            bs, c, h, w = im.shape
+            optimizer.zero_grad()
+            im_flatten = im.reshape([bs, -1])
+            out = mynet.forward(im_flatten)
+            ce = nn.CrossEntropyLoss()(out, label)
             loss = ce
             loss.backward()
+            optimizer.step()
 
-        global_step += 1
-        total_steps.update()
-        if global_step % log_interval == 0:
-            counter = AccuracyCounter()
-            counter.addOneBatch(variable_to_numpy(
-                one_hot(label, classes)), variable_to_numpy(F.softmax(out, dim=-1)))
-            acc_train = torch.tensor(
-                [counter.reportAccuracy()]).to(output_device)
-            logger.add_scalar('loss', loss, global_step)
-            logger.add_scalar('acc_train', acc_train, global_step)
+        if epoch_id % log_epoch == 0:
+            train_ca = ClassificationAccuracy(class_num)
+            after_softmax = F.softmax(out, dim=-1)
+            predict = torch.argmax(after_softmax, dim=-1)
+            train_ca.accumulate(label=label, predict=predict)
+            acc_train = train_ca.get()
+            writer.add_scalar('loss', loss, epoch_id)
+            writer.add_scalar('acc_training', acc_train, epoch_id)
+            with open(os.path.join(model_dir, f'mynet_{epoch_id}.pkl'), 'wb') as f:
+                torch.save(mynet.state_dict(), f)
 
-        if global_step % test_interval == 0:
-            counters = [AccuracyCounter() for x in range(classes)]
-            with TrainingModeManager([mynet], train=False) as mgr, \
-                    Accumulator(['after_softmax', 'label']) as target_accumulator, \
-                    torch.no_grad():
-                for i, (im, label) in enumerate(tqdm(test_dl, desc='testing ')):
+            with torch.no_grad():
+                mynet.eval()
+                r = 0
+                celoss = 0
+                test_ca = ClassificationAccuracy(class_num)
+                for i, (im, label) in enumerate(tqdm(train_dl, desc='testing train')):
+                    r += 1
                     im = im.to(output_device)
                     label = label.to(output_device)
-                    bs = im.shape[0]
+                    bs, c, h, w = im.shape
                     im_flatten = im.reshape([bs, -1])
                     out = mynet.forward(im_flatten)
+                    ce = nn.CrossEntropyLoss()(out, label)
                     after_softmax = F.softmax(out, dim=-1)
+                    predict = torch.argmax(after_softmax, dim=-1)
+                    test_ca.accumulate(label=label, predict=predict)
+                    celoss += ce
 
-                    for name in target_accumulator.names:
-                        globals()[name] = variable_to_numpy(globals()[name])
+                celossavg = celoss/r
+                acc_test = test_ca.get()
+                writer.add_scalar('train loss', celossavg, epoch_id)
+                writer.add_scalar('acc_train', acc_test, epoch_id)
 
-                    target_accumulator.updateData(globals())
+                r = 0
+                celoss = 0
+                test_ca = ClassificationAccuracy(class_num)
+                for i, (im, label) in enumerate(tqdm(test_dl, desc='testing test')):
+                    r += 1
+                    im = im.to(output_device)
+                    label = label.to(output_device)
+                    bs, c, h, w = im.shape
+                    im_flatten = im.reshape([bs, -1])
+                    out = mynet.forward(im_flatten)
+                    ce = nn.CrossEntropyLoss()(out, label)
+                    after_softmax = F.softmax(out, dim=-1)
+                    predict = torch.argmax(after_softmax, dim=-1)
+                    test_ca.accumulate(label=label, predict=predict)
+                    celoss += ce
 
-            for x in target_accumulator:
-                globals()[x] = target_accumulator[x]
+                celossavg = celoss/r
+                acc_test = test_ca.get()
+                writer.add_scalar('test loss', celossavg, epoch_id)
+                writer.add_scalar('acc_test', acc_test, epoch_id)
 
-            counters = [AccuracyCounter() for x in range(classes)]
-            for (each_predict_prob, each_label) in zip(after_softmax, label):
-                counters[each_label].Ntotal += 1.0
-                each_pred_id = np.argmax(each_predict_prob)
-                if each_pred_id == each_label:
-                    counters[each_label].Ncorrect += 1.0
-
-            acc_tests = [x.reportAccuracy()
-                         for x in counters if not np.isnan(x.reportAccuracy())]
-            acc_test = torch.ones(1, 1) * np.mean(acc_tests)
-            logger.add_scalar('acc_test', acc_test, global_step)
-            clear_output()
-            data = {
-                "mynet": mynet.state_dict(),
-            }
-            if acc_test > best_acc:
-                best_acc = acc_test
-                with open(os.path.join(log_dir, 'best.pkl'), 'wb') as f:
-                    torch.save(data, f)
-
-                with open(os.path.join(log_dir, 'current.pkl'), 'wb') as f:
-                    torch.save(data, f)
-logger.close()
+    writer.close()
