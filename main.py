@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torchplus.utils import Init, ClassificationAccuracy
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     batch_size = 8
     train_epoches = 50
     log_epoch = 2
@@ -22,22 +22,24 @@ if __name__ == '__main__':
     h = 112
     w = 92
 
-    init = Init(seed=9970, log_root_dir=root_dir, split=True,
-                backup_filename=__file__, tensorboard=True, comment=f'main AT and T face')
+    init = Init(
+        seed=9970,
+        log_root_dir=root_dir,
+        sep=True,
+        backup_filename=__file__,
+        tensorboard=True,
+        comment=f"main AT and T face",
+    )
     output_device = init.get_device()
     writer = init.get_writer()
     log_dir, model_dir = init.get_log_dir()
     data_workers = 2
 
-    transform = Compose([
-        Grayscale(num_output_channels=1),
-        ToTensor()
-    ])
+    transform = Compose([Grayscale(num_output_channels=1), ToTensor()])
 
     ds = ImageFolder(dataset_dir, transform=transform)
     ds_len = len(ds)
-    train_ds, test_ds = random_split(
-        ds, [ds_len*7//10, ds_len-ds_len*7//10])
+    train_ds, test_ds = random_split(ds, [ds_len * 7 // 10, ds_len - ds_len * 7 // 10])
 
     train_ds_len = len(train_ds)
     test_ds_len = len(test_ds)
@@ -45,10 +47,22 @@ if __name__ == '__main__':
     print(train_ds_len)
     print(test_ds_len)
 
-    train_dl = DataLoader(dataset=train_ds, batch_size=batch_size,
-                          shuffle=True, num_workers=data_workers, drop_last=True)
-    test_dl = DataLoader(dataset=test_ds, batch_size=batch_size,
-                         shuffle=False, num_workers=data_workers, drop_last=False)
+    train_dl = DataLoader(
+        dataset=train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=data_workers,
+        drop_last=True,
+        pin_memory=True,
+    )
+    test_dl = DataLoader(
+        dataset=test_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=data_workers,
+        drop_last=False,
+        pin_memory=True,
+    )
 
     class Net(nn.Module):
         def __init__(self, input_features, output_features):
@@ -56,7 +70,8 @@ if __name__ == '__main__':
             self.input_features = input_features
             self.output_features = output_features
             self.regression = nn.Linear(
-                in_features=self.input_features, out_features=self.output_features)
+                in_features=self.input_features, out_features=self.output_features
+            )
 
         def forward(self, x):
             x = self.regression(x)
@@ -68,21 +83,23 @@ if __name__ == '__main__':
             self.input_features = input_features
             self.middle_features = 3000
             self.output_features = output_features
-            self.fc = nn.Linear(in_features=self.input_features,
-                                out_features=self.middle_features)
+            self.fc = nn.Linear(
+                in_features=self.input_features, out_features=self.middle_features
+            )
             self.regression = nn.Linear(
-                in_features=self.middle_features, out_features=self.output_features)
+                in_features=self.middle_features, out_features=self.output_features
+            )
 
         def forward(self, x):
             x = self.fc(x)
             x = self.regression(x)
             return x
 
-    mynet = Net(h*w, class_num).to(output_device).train(True)
+    mynet = Net(h * w, class_num).to(output_device).train(True)
     optimizer = optim.SGD(mynet.parameters(), lr=0.01)
 
-    for epoch_id in tqdm(range(1, train_epoches+1), desc='Total Epoch'):
-        iters = tqdm(train_dl, desc=f'epoch {epoch_id}')
+    for epoch_id in tqdm(range(1, train_epoches + 1), desc="Total Epoch"):
+        iters = tqdm(train_dl, desc=f"epoch {epoch_id}")
         for i, (im, label) in enumerate(iters):
             im = im.to(output_device)
             label = label.to(output_device)
@@ -101,9 +118,9 @@ if __name__ == '__main__':
             predict = torch.argmax(after_softmax, dim=-1)
             train_ca.accumulate(label=label, predict=predict)
             acc_train = train_ca.get()
-            writer.add_scalar('loss', loss, epoch_id)
-            writer.add_scalar('acc_training', acc_train, epoch_id)
-            with open(os.path.join(model_dir, f'mynet_{epoch_id}.pkl'), 'wb') as f:
+            writer.add_scalar("loss", loss, epoch_id)
+            writer.add_scalar("acc_training", acc_train, epoch_id)
+            with open(os.path.join(model_dir, f"mynet_{epoch_id}.pkl"), "wb") as f:
                 torch.save(mynet.state_dict(), f)
 
             with torch.no_grad():
@@ -111,7 +128,7 @@ if __name__ == '__main__':
                 r = 0
                 celoss = 0
                 test_ca = ClassificationAccuracy(class_num)
-                for i, (im, label) in enumerate(tqdm(train_dl, desc='testing train')):
+                for i, (im, label) in enumerate(tqdm(train_dl, desc="testing train")):
                     r += 1
                     im = im.to(output_device)
                     label = label.to(output_device)
@@ -124,15 +141,15 @@ if __name__ == '__main__':
                     test_ca.accumulate(label=label, predict=predict)
                     celoss += ce
 
-                celossavg = celoss/r
+                celossavg = celoss / r
                 acc_test = test_ca.get()
-                writer.add_scalar('train loss', celossavg, epoch_id)
-                writer.add_scalar('acc_train', acc_test, epoch_id)
+                writer.add_scalar("train loss", celossavg, epoch_id)
+                writer.add_scalar("acc_train", acc_test, epoch_id)
 
                 r = 0
                 celoss = 0
                 test_ca = ClassificationAccuracy(class_num)
-                for i, (im, label) in enumerate(tqdm(test_dl, desc='testing test')):
+                for i, (im, label) in enumerate(tqdm(test_dl, desc="testing test")):
                     r += 1
                     im = im.to(output_device)
                     label = label.to(output_device)
@@ -145,9 +162,9 @@ if __name__ == '__main__':
                     test_ca.accumulate(label=label, predict=predict)
                     celoss += ce
 
-                celossavg = celoss/r
+                celossavg = celoss / r
                 acc_test = test_ca.get()
-                writer.add_scalar('test loss', celossavg, epoch_id)
-                writer.add_scalar('acc_test', acc_test, epoch_id)
+                writer.add_scalar("test loss", celossavg, epoch_id)
+                writer.add_scalar("acc_test", acc_test, epoch_id)
 
     writer.close()

@@ -23,7 +23,7 @@ Download the dataset, install the dependences (below), Click run in any editor.
 
 ## Third-party libraries
 
-Anaconda is prefered is the easiest way. Install Anaconda and install pytorch using the command in the official page. Then install torchplus using `conda install torchplus -c zhangzp9970`. Everything will be ok then.
+Anaconda is prefered and is the easiest way. Install Anaconda and install pytorch using the command in the official pytorch page. Then install torchplus using `conda install torchplus -c zhangzp9970`. Everything will be ok then.
 
 * pytorch >= 1.8.1
 * torchvision
