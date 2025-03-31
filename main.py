@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset
+from torch.utils.data import DataLoader, random_split, Subset, ConcatDataset,TensorDataset
 from torchvision.datasets import *
 from torchvision.transforms.transforms import *
 from torchvision.transforms.functional import *
@@ -11,7 +11,28 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 from torchplus.utils import Init, ClassificationAccuracy
 
+def PreproDataset(root:str,
+                  transform):
+    ds = ImageFolder(root, transform=transform)
+    train_dl = DataLoader(
+        dataset=ds,
+        batch_size=128,
+        num_workers=2,
+        shuffle=False,
+        drop_last=False)
+    list1 = []
+    list2 = []
+    list3=[]
+    for i, batch in enumerate(tqdm(train_dl, desc=f"pre-process dataset")):
+        list1.append(batch[0])
+        list2.append(batch[1])
+        list3.append(batch[2])
+    list1 = torch.cat(list1)
+    list2 = torch.cat(list2)
+    list3=torch.cat(list3)
+    ds = TensorDataset(list1,list2,list3)
 
+    return ds
 if __name__ == "__main__":
     batch_size = 8
     train_epoches = 50
@@ -37,7 +58,7 @@ if __name__ == "__main__":
 
     transform = Compose([Grayscale(num_output_channels=1), ToTensor()])
 
-    ds = ImageFolder(dataset_dir, transform=transform)
+    ds = PreproDataset(dataset_dir, transform=transform)
     ds_len = len(ds)
     train_ds, test_ds = random_split(ds, [ds_len * 7 // 10, ds_len - ds_len * 7 // 10])
 
