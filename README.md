@@ -3,7 +3,7 @@
 Unofficial Pytorch implementation of paper: Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures
 
 ## NEW!
-Code of my latest work on MIA "Z. Zhang, X. Wang, J. Huang and S. Zhang, "Analysis and Utilization of Hidden Information in Model Inversion Attacks," in IEEE Transactions on Information Forensics and Security, doi: 10.1109/TIFS.2023.3295942." is available at: https://github.com/zhangzp9970/Amplified-MIA
+Code of my latest work on MIA is available at: https://github.com/zhangzp9970
 
 ## Description
 
